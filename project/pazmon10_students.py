@@ -78,9 +78,9 @@ def load_monster_images(name: str) -> list[pg.Surface]:
             path = os.path.join("assets","monsters",f)
             if os.path.exists(path):
                 img = pg.image.load(path).convert_alpha()
-                surfaces.append(pg.transform.smoothscale(img, (256,256)))
+                surfaces.append(pg.transform.smoothscale(img, (400,400)))
     if not surfaces:
-        surf = pg.Surface((256,256), pg.SRCALPHA); surf.fill((60,60,60,200))
+        surf = pg.Surface((400,400), pg.SRCALPHA); surf.fill((60,60,60,200))
         return [surf, surf]
     return surfaces
 
@@ -525,7 +525,7 @@ def main():
                                 enemy={"name":"宝箱","element":"無","hp":0,"max_hp":0,"ap":0,"dp":0} #クリア後の宝箱演出
                                 monster_images = load_monster_images("宝箱")
                                 show_frame = 0
-                                message="ダンジョン制覇！おめでとう！（ESCで終了）"
+                                message="ダンジョン制覇！おめでとう！\n（ESCで終了）"
 
                 # ドラッグ終了
                 drag_src = None
@@ -557,6 +557,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
