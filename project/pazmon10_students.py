@@ -68,7 +68,7 @@ def load_monster_images(name: str) -> list[pg.Surface]:
         "ゴブリン":["goblin1.png","goblin2.png"],
         "オオコウモリ":["bat1.png","bat2.png"],
         "ウェアウルフ":["werewolf1.png","werewolf2.png"],
-        "ドラゴン":["dragon1.png","dragon2.png"]
+        "ドラゴン":["dragon1.png","dragon2.png"],
         "宝箱":["chest1.png","chest2.png"]
     }
     fn = m.get(name)
@@ -556,6 +556,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
