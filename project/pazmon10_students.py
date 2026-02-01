@@ -270,6 +270,7 @@ def draw_message(screen, text, font):
 # ---------------- タイトル画面 ----------------
 
 def title_screen(screen: pg.Surface, font: pg.font.Font) -> bool:
+    button = pg.mixer.Sound(os.path.join("assets","sounds","button.wav"))
 
 #　ボタンはクリックのみ　True: ゲーム開始 / False: 終了
 
@@ -325,7 +326,7 @@ def title_screen(screen: pg.Surface, font: pg.font.Font) -> bool:
 # ---------------- メイン ----------------
 def main():
     pg.init()
-    pg.mixer.init) #BGMと効果音追加
+    pg.mixer.init() #BGMと効果音追加
     bgm_title = os.path.join("assets","sounds","maou_bgm_8bit01_opening.mp3")
     bgm_battle = os.path.join("assets","sounds","maou_bgm_8bit25_battle.mp3")
     bgm_boss = os.path.join("assets","sounds","maou_bgm_8bit18_boss.mp3")
@@ -380,11 +381,11 @@ def main():
         "hp":600, "max_hp":600, "dp":(10+10+5+15)/4
     }
     enemies = [
-        {"name":"スライム","element":"水","hp":100,"max_hp":100,"ap":10,"dp":1,"enemy_damage_time":0}, #要素追加・敵のhpを開発用に調整
-        {"name":"ゴブリン","element":"土","hp":200,"max_hp":200,"ap":20,"dp":5,"enemy_damage_time":0},
-        {"name":"オオコウモリ","element":"風","hp":300,"max_hp":300,"ap":30,"dp":10,"enemy_damage_time":0},
-        {"name":"ウェアウルフ","element":"風","hp":400,"max_hp":400,"ap":40,"dp":15,"enemy_damage_time":0},
-        {"name":"ドラゴン","element":"火","hp":600,"max_hp":600,"ap":50,"dp":20,"enemy_damage_time":0},
+        {"name":"スライム","element":"水","hp":50,"max_hp":50,"ap":10,"dp":1,"enemy_damage_time":0}, #要素追加・敵のhpを開発用に調整
+        {"name":"ゴブリン","element":"土","hp":50,"max_hp":50,"ap":20,"dp":5,"enemy_damage_time":0},
+        {"name":"オオコウモリ","element":"風","hp":50,"max_hp":50,"ap":30,"dp":10,"enemy_damage_time":0},
+        {"name":"ウェアウルフ","element":"風","hp":50,"max_hp":50,"ap":40,"dp":15,"enemy_damage_time":0},
+        {"name":"ドラゴン","element":"火","hp":50,"max_hp":50,"ap":50,"dp":20,"enemy_damage_time":0},
     ]
     enemy_idx=0
     enemy = enemies[enemy_idx]
@@ -495,7 +496,7 @@ def main():
                         # 敵ターン or 撃破後処理
                     if enemy['hp']>0:
                             edmg=enemy_attack(party, enemy)
-                            party['last_damage_time'] = pg.time.get_ticks) ##
+                            party['last_damage_time'] = pg.time.get_ticks() ##
                             party['hp_event_type'] = 'damage'
                             damage.play() #効果音
                             message=f"{enemy['name']}の攻撃！ -{edmg}"
@@ -556,6 +557,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
