@@ -117,28 +117,86 @@ def hp_bar_surf(current: int, max_hp: int, w: int, h: int) -> pg.Surface:
     return surf
 
 # ---------------- 盤面ロジック ----------------
-def init_field()->List[str]:
-    return [random.choice(GEMS) for _ in range(14)]
+def init_field(rows=3, cols=14)->List[List[str]]:
+    return [[random.choice(GEMS) for _ in range(cols)]for _ in range(rows)]
 
-def leftmost_run(field:List[str])->Optional[Tuple[int,int]]:
-    n=len(field); i=0
-    while i<n:
-        j=i+1
-        while j<n and field[j]==field[i]: j+=1
-        L=j-i
-        if L>=3 and field[i] in GEMS: return (i,L)
-        i=j
+def leftmost_run(field:List[List[str]])->Optional[Tuple[int,int]]:
+       rows = len(field)
+    cols = len(field[0])
+    for r in range(rows):
+        row = field[r]
+        i = 0
+        while i < cols:
+            j = i + 1
+            while j < cols and row[j] == row[i]:
+                j += 1
+            L = j - i
+            if L >= 3 and row[i] in GEMS:
+                return (r, i, L)
+            i = j
     return None
 
-def collapse_left(field:List[str], start:int, length:int):
+def collapse_left(row:List[str], start:int, length:int):
     # 消滅部分を '無' にしてから左詰め（簡略：一気に詰める）
-    n=len(field)
-    for k in range(start, start+length): field[k]="無"
-    rest=[e for e in field if e!="無"]; field[:] = rest + ["無"]*length
+    for k in range(start, start+length):
+        row[k]="無"
+    rest=[e for e in row if e!="無"]
+    row[:] = rest + ["無"]*(len(row) - len(rest))
 
-def fill_random(field:List[str]):
-    for i,e in enumerate(field):
-        if e=="無": field[i]=random.choice(GEMS)
+def fill_random(row:List[str]):
+    for i,e in enumerate(row):
+        if e=="無": 
+            row[i]=random.choice(GEMS)
+def find_runs(field: List[List[str]]):
+    """縦横どちらの3連も探し、全ての run を返す。
+    戻り値: list of (r, c, length, 'h' or 'v')
+    """
+    rows = len(field)
+    cols = len(field[0])
+    runs = []
+
+    # --- 横の run ---
+    for r in range(rows):
+        c = 0
+        while c < cols:
+            j = c + 1
+            while j < cols and field[r][j] == field[r][c]:
+                j += 1
+            length = j - c
+            if length >= 3 and field[r][c] in GEMS:
+                runs.append((r, c, length, 'h'))
+            c = j
+    
+    
+    # --- 縦の run ---        
+    for c in range(cols):
+        r = 0
+        while r < rows:
+            j = r + 1
+            while j < rows and field[j][c] == field[r][c]:
+                j += 1
+            length = j - r
+            if length >= 3 and field[r][c] in GEMS:
+                runs.append((r, c, length, 'v'))
+            r = j
+    return runs
+
+def apply_runs(field: List[List[str]], runs):
+    """run の部分を '無' にし、全行に対して左詰め・ランダム補充を行う"""
+    # 消去
+    for (r, c, length, direction) in runs:
+        if direction == 'h':  # 横
+            for x in range(c, c + length):
+                field[r][x] = "無"
+        else:  # 縦
+            for y in range(r, r + length):
+                field[y][c] = "無"
+
+    # 全行を左詰めして補充
+    for r in range(len(field)):
+        collapse_left(field[r], 0, 0)  # start/length は無視、行全体左詰め
+        fill_random(field[r])
+    return runs            
 
 # ---------------- ダメージ/回復 ----------------
 def jitter(v:float, r:float=0.10)->int:
@@ -165,11 +223,13 @@ def enemy_attack(party:dict, monster:dict)->int:
     dmg=jitter(base); party["hp"]=max(0,party["hp"]-dmg); return dmg
 
 # ---------------- 描画ユーティリティ ----------------
-def slot_rect(i: int) -> pg.Rect:
-    tx = LEFT_MARGIN + i * (SLOT_W + SLOT_PAD)
-    return pg.Rect(tx, FIELD_Y, SLOT_W, SLOT_W)
+def slot_rect(r:int, c:int) -> pg.Rect:
+    tx = LEFT_MARGIN + c * (SLOT_W + SLOT_PAD)
+    ty = FIELD_Y + r * (SLOT_W + SLOT_PAD)
+    return pg.Rect(tx,ty, SLOT_W, SLOT_W)
 
 def draw_gem_at(screen, elem: str, x: int, y: int, scale=1.0, with_shadow=False, gem_images=None):
+    r = int((SLOT_W // 2 - 10) * scale)
     img = gem_images.get(elem)
     if img is None:
         return
@@ -183,10 +243,13 @@ def draw_gem_at(screen, elem: str, x: int, y: int, scale=1.0, with_shadow=False,
         screen.blit(shadow, (rect.x - 5, rect.y - 5 + 4))
     screen.blit(img_scl, rect.topleft)
 
-def draw_field(screen, field:List[str], font, hover_idx:Optional[int]=None,
-               drag_src:Optional[int]=None, drag_elem:Optional[str]=None, gem_images=None):
+def draw_field(screen, field:List[List[str]], font, hover_idx:Optional[int]=None,
+               drag_src:Optional[Tuple[int,int]]=None, drag_elem:Optional[str]=None, gem_images=None):
+    ows = len(field)
+    cols = len(field[0]) if rows > 0 else 0               
     # スロット見出し
-    for i,elem in enumerate(field):
+    for c,slot in enumerate(SLOTS[:cols]):
+        tx = LEFT_MARGIN + c * (SLOT_W + SLOT_PAD)
         rect = slot_rect(i)
         s=font.render(SLOTS[i], True, (220,220,220))
         screen.blit(s,(rect.x + rect.width // 2 - s.get_width() // 2, rect.y - s.get_height() - 4))
@@ -196,10 +259,11 @@ def draw_field(screen, field:List[str], font, hover_idx:Optional[int]=None,
         base = (35,35,40) if hover_idx!=i else (60,60,80)
         pg.draw.rect(screen, base, rect, border_radius=8)
     # 宝石（ドラッグ開始スロットは空に見せる）
-    for i,elem in enumerate(field):
-        if drag_src is not None and i==drag_src:
+    for r in range(rows):
+        for c in range(cols):
+        if drag_src is not None and (r,c)==drag_src:
             continue
-        rect=slot_rect(i)
+        rect=slot_rect(r,c)
         cx,cy=rect.center
         draw_gem_at(screen, elem, cx, cy, gem_images=gem_images)
         sym = ELEMENT_SYMBOLS[elem]
@@ -440,11 +504,15 @@ def main():
                     continue
                     
                 mx,my = e.pos
-                if FIELD_Y<=my<=FIELD_Y+SLOT_W:
-                    i = (mx-LEFT_MARGIN)//(SLOT_W+SLOT_PAD)
-                    if 0<=i<14:
-                        drag_src = i
-                        drag_elem = field[i]
+                # 盤面の当たり判定（3行ぶん）
+                if FIELD_Y <= my <= FIELD_Y + rows * (SLOT_W + SLOT_PAD):
+                    r = (my - FIELD_Y) // (SLOT_W + SLOT_PAD)
+                    c = (mx - LEFT_MARGIN) // (SLOT_W + SLOT_PAD)
+                    if 0 <= r < rows and 0 <= c < cols:
+                        drag_src = (r, c)
+                        drag_elem = field[r][c]
+                        rn = row_names[r] if 0 <= r < len(row_names) else f"{r}段"
+                        message = f"{rn}段 {SLOTS[c]} を掴んだ"
 
             elif e.type==pg.MOUSEMOTION:
                 mx,my = e.pos
@@ -460,14 +528,60 @@ def main():
 
             elif e.type==pg.MOUSEBUTTONUP and e.button==1:
                 if drag_src is not None:
-                    combo=0
+                     r0, c0 = drag_src
+                    mx, my = e.pos
+                    r1 = (my - FIELD_Y) // (SLOT_W + SLOT_PAD)
+                    c1 = (mx - LEFT_MARGIN) // (SLOT_W + SLOT_PAD)
+
+                   # 有効範囲＆同一セル以外
+                    if 0 <= r1 < rows and 0 <= c1 < cols and (r1 != r0 or c1 != c0):
+                        # --- 横方向スライド（同じ行） ---
+                        if r1 == r0 and c1 != c0:
+                            step = 1 if c1 > c0 else -1
+                            k = c0
+                            while k != c1:
+                                nxt = k + step
+                                field[r0][k], field[r0][nxt] = field[r0][nxt], field[r0][k]
+                                k = nxt
+                                message = f"{SLOTS[k - step]} ↔ {SLOTS[k]} を交換"
+                                screen.fill((22, 22, 28))
+                                draw_top(screen, enemy, party, font)
+                                draw_field(screen, field, font, drag_src=None, drag_elem=None)
+                                draw_message(screen, message, font)
+                                pg.display.flip()
+                                time.sleep(FRAME_DELAY)
+
+                        # --- 縦方向スライド（同じ列） ---
+                        elif c1 == c0 and r1 != r0:
+                            step = 1 if r1 > r0 else -1
+                            k = r0
+                            while k != r1:
+                                nxt = k + step
+                                field[k][c0], field[nxt][c0] = field[nxt][c0], field[k][c0]
+                                k = nxt
+                                a = row_names[k - step] if 0 <= (k - step) < len(row_names) else f"{k - step}段"
+                                b = row_names[k]       if 0 <= k < len(row_names)       else f"{k}段"
+                                message = f"{a}段 ↔ {b}段 を交換（列 {SLOTS[c0]}）"
+                                screen.fill((22, 22, 28))
+                                draw_top(screen, enemy, party, font)
+                                draw_field(screen, field, font, drag_src=None, drag_elem=None)
+                                draw_message(screen, message, font)
+                                pg.display.flip()
+                                time.sleep(FRAME_DELAY)
+
+                        # 斜め移動（rもcも違う）は無効
+
+                        # --- 評価ループ（横の3連・連鎖対応） ---
+                    combo=0 
                     while True:
                             run = leftmost_run(field)
-                            if not run:
+                            if not runs:
                                 break
                             start,L = run
                             combo+=1
-                            elem = field[start]
+                           r0, c0, L, direction = runs[0]
+                            elem = field[r0][c0]
+
                             if elem=="命":
                                 heal=jitter(20*(1.5**((L-3)+combo)))
                                 party['hp']=min(party['max_hp'], party['hp']+heal)
@@ -557,6 +671,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
