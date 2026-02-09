@@ -473,8 +473,10 @@ def main():
     lifeup.set_volume(1.0)
     clear.set_volume(1.0)
     button.set_volume(3.0)
-    gameover.set_volume(1.0)
-    pg.mixer.music.set_volume(0.3)
+    gameover.set_volume(1.0) ]
+
+    if mixer_ok:
+        set_music_volume(MUSIC_VOLUME)
     
     screen = pg.display.set_mode((WIN_W, WIN_H))
     gem_images = {elem: load_gem_image(elem) for elem in GEMS + ["無"]}
@@ -520,6 +522,10 @@ def main():
     enemy_idx=0
     enemy = enemies[enemy_idx]
     field = init_field()
+
+    rows = len(field)
+    cols = len(field[0]) if rows > 0 else 0
+    row_names = ["上", "中", "下"]
 
     monster_images = load_monster_images(enemy["name"])
 
@@ -738,6 +744,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
