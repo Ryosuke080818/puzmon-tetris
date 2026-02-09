@@ -497,7 +497,8 @@ def title_screen(screen: pg.Surface, font: pg.font.Font) -> bool:
 # ---------------- メイン ----------------
 def main():
     pg.init()
-     try:
+
+    try:
         pg.mixer.init()  # BGMと効果音追加
         mixer_ok = True
     except Exception:
@@ -790,6 +791,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
