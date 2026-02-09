@@ -267,35 +267,56 @@ def draw_gem_at(screen, elem: str, x: int, y: int, scale=1.0, with_shadow=False,
         screen.blit(shadow, (rect.x - 5, rect.y - 5 + 4))
     screen.blit(img_scl, rect.topleft)
 
-def draw_field(screen, field:List[List[str]], font, hover_idx:Optional[int]=None,
-               drag_src:Optional[Tuple[int,int]]=None, drag_elem:Optional[str]=None, gem_images=None):
-    ows = len(field)
+def draw_field(
+    screen,
+    field: List[List[str]],
+    font,
+    hover_idx: Optional[Tuple[int, int]] = None,
+    drag_src: Optional[Tuple[int, int]] = None,
+    drag_elem: Optional[str] = None,
+    gem_images=None,
+):
+    rows = len(field)
     cols = len(field[0]) if rows > 0 else 0               
     # スロット見出し
-    for c,slot in enumerate(SLOTS[:cols]):
-        tx = LEFT_MARGIN + c * (SLOT_W + SLOT_PAD)
-        rect = slot_rect(i)
-        s=font.render(SLOTS[i], True, (220,220,220))
-        screen.blit(s,(rect.x + rect.width // 2 - s.get_width() // 2, rect.y - s.get_height() - 4))
+    for c, slot in enumerate(SLOTS[:cols]):
+        rect = slot_rect(0, c)
+        s = font.render(slot, True, (220, 220, 220))
+        screen.blit(
+            s,
+            (
+                rect.x + rect.width // 2 - s.get_width() // 2,
+                rect.y - s.get_height() - 4,
+            ),
+        )
     # スロット下地 & ホバー強調
-    for i,_ in enumerate(field):
-        rect=slot_rect(i)
-        base = (35,35,40) if hover_idx!=i else (60,60,80)
-        pg.draw.rect(screen, base, rect, border_radius=8)
+    for r in range(rows):
+        for c in range(cols):
+            rect = slot_rect(r, c)
+            base = (60, 60, 80) if hover_idx == (r, c) else (35, 35, 40)
+            pg.draw.rect(screen, base, rect, border_radius=8)
     # 宝石（ドラッグ開始スロットは空に見せる）
     for r in range(rows):
         for c in range(cols):
-         if drag_src is not None and (r,c)==drag_src:
-            continue
-        rect=slot_rect(r,c)
-        cx,cy=rect.center
-        draw_gem_at(screen, elem, cx, cy, gem_images=gem_images)
-        sym = ELEMENT_SYMBOLS[elem]
+            if drag_src is not None and (r, c) == drag_src:
+                continue
+            elem = field[r][c]
+            rect = slot_rect(r, c)
+            cx, cy = rect.center
+            draw_gem_at(screen, elem, cx, cy, gem_images=gem_images)
         
     # ドラッグ中の宝石（ゴースト）をカーソル位置に拡大表示
     if drag_elem is not None:
-        mx, my = pg.mouse.get_pos()
-        draw_gem_at(screen, drag_elem, mx, my-4, scale=DRAG_SCALE, with_shadow=True, gem_images=gem_images)
+       mx, my = pg.mouse.get_pos()
+        draw_gem_at(
+            screen,
+            drag_elem,
+            mx,
+            my - 4,
+            scale=DRAG_SCALE,
+            with_shadow=True,
+            gem_images=gem_images,
+        )
 
 def draw_top(screen, enemy, party, font, enemy_frames, show_frame=0):
     current_time = pg.time.get_ticks()
@@ -768,6 +789,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
