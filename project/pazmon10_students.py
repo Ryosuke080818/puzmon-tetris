@@ -12,7 +12,6 @@ class _NullSound:
 
 
 def load_sound(path: str):
-    """存在しない効果音で落ちないようにする。"""
     if os.path.exists(path):
         return pg.mixer.Sound(path)
     return _NullSound()
@@ -818,6 +817,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
