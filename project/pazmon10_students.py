@@ -646,21 +646,22 @@ def main():
                 drag_elem = None
                 hover_idx = None
 
-        # 常時描画
+         # 常時描画
         screen.fill((22,22,28))
         draw_top(screen, enemy, party, font, monster_images, show_frame)
         draw_field(screen, field, font, hover_idx, drag_src, drag_elem, gem_images=gem_images)
-        draw_message(screen, message, font)
-        pg.display.flip()
-        clock.tick(60)
 
-         # 「タイトルへ」描画
+        # 「タイトルへ」ボタン
         mx, my = pg.mouse.get_pos()
         back_hover = back_btn.collidepoint(mx, my)
         pg.draw.rect(screen, (80, 80, 110) if back_hover else (55, 55, 75), back_btn, border_radius=10)
         pg.draw.rect(screen, (230, 230, 230), back_btn, width=2, border_radius=10)
         btxt = get_jp_font(18).render("タイトルへ", True, (245, 245, 245))
         screen.blit(btxt, (back_btn.centerx - btxt.get_width()//2, back_btn.centery - btxt.get_height()//2))
+
+        draw_message(screen, message, font)
+        pg.display.flip()
+        clock.tick(60)
 
         keys=pg.key.get_pressed()
         if keys[pg.K_ESCAPE]:
@@ -671,6 +672,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
