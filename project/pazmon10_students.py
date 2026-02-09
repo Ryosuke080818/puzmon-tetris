@@ -2,6 +2,30 @@ import pygame as pg
 import sys, os, random, time
 from typing import List, Tuple, Optional
 
+# ---------------- サウンド安全化 ----------------
+class _NullSound:
+    def play(self, *args, **kwargs):
+        return None
+
+    def set_volume(self, *args, **kwargs):
+        return None
+
+
+def load_sound(path: str):
+    """存在しない効果音で落ちないようにする。"""
+    if os.path.exists(path):
+        return pg.mixer.Sound(path)
+    return _NullSound()
+
+# BGM 音量（0.0〜1.0）
+MUSIC_VOLUME = 0.3
+
+
+def set_music_volume(vol: float):
+    global MUSIC_VOLUME
+    MUSIC_VOLUME = max(0.0, min(1.0, float(vol)))
+    if pg.mixer.get_init():
+        pg.mixer.music.set_volume(MUSIC_VOLUME)
 # ---------------- フォント解決 ----------------
 def get_jp_font(size: int) -> pg.font.Font:
     bundle = os.path.join("assets", "fonts", "BestTen-CRT.ttf")
@@ -744,6 +768,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
