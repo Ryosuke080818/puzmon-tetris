@@ -307,7 +307,7 @@ def draw_field(
         
     # ドラッグ中の宝石（ゴースト）をカーソル位置に拡大表示
     if drag_elem is not None:
-       mx, my = pg.mouse.get_pos()
+        mx, my = pg.mouse.get_pos()
         draw_gem_at(
             screen,
             drag_elem,
@@ -317,6 +317,7 @@ def draw_field(
             with_shadow=True,
             gem_images=gem_images,
         )
+
 
 def draw_top(screen, enemy, party, font, enemy_frames, show_frame=0):
     current_time = pg.time.get_ticks()
@@ -789,6 +790,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
