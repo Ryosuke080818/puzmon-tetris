@@ -462,7 +462,7 @@ def title_screen(screen: pg.Surface, font: pg.font.Font) -> bool:
     quit_btn  = pg.Rect(WIN_W//2 - btn_w//2, 380, btn_w, btn_h)
 
     #                   横　　　　　　縦　　　　　　ボタン幅　高さ
-     while True:
+    while True:
         mx, my = pg.mouse.get_pos()#マウスの座標
 
         for e in pg.event.get():
@@ -820,6 +820,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
