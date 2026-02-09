@@ -333,7 +333,6 @@ def draw_message(screen, text, font):
 
 # ---------------- タイトル画面 ----------------
 def settings_screen(screen: pg.Surface) -> None:
-    """BGM音量の調整画面（ESC または 戻る でタイトルへ）。"""
     title_font = get_jp_font(44)
     font = get_jp_font(24)
     small = get_jp_font(18)
@@ -734,6 +733,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
