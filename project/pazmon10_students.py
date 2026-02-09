@@ -26,6 +26,7 @@ def set_music_volume(vol: float):
     MUSIC_VOLUME = max(0.0, min(1.0, float(vol)))
     if pg.mixer.get_init():
         pg.mixer.music.set_volume(MUSIC_VOLUME)
+
 # ---------------- フォント解決 ----------------
 def get_jp_font(size: int) -> pg.font.Font:
     bundle = os.path.join("assets", "fonts", "BestTen-CRT.ttf")
@@ -277,7 +278,8 @@ def draw_field(
     gem_images=None,
 ):
     rows = len(field)
-    cols = len(field[0]) if rows > 0 else 0               
+    cols = len(field[0]) if rows > 0 else 0 
+    
     # スロット見出し
     for c, slot in enumerate(SLOTS[:cols]):
         rect = slot_rect(0, c)
@@ -289,12 +291,14 @@ def draw_field(
                 rect.y - s.get_height() - 4,
             ),
         )
+    
     # スロット下地 & ホバー強調
     for r in range(rows):
         for c in range(cols):
             rect = slot_rect(r, c)
             base = (60, 60, 80) if hover_idx == (r, c) else (35, 35, 40)
             pg.draw.rect(screen, base, rect, border_radius=8)
+    
     # 宝石（ドラッグ開始スロットは空に見せる）
     for r in range(rows):
         for c in range(cols):
@@ -317,7 +321,6 @@ def draw_field(
             with_shadow=True,
             gem_images=gem_images,
         )
-
 
 def draw_top(screen, enemy, party, font, enemy_frames, show_frame=0):
     current_time = pg.time.get_ticks()
@@ -378,7 +381,9 @@ def draw_message(screen, text, font):
         screen.blit(surf,(525,275+i*40))
 
 # ---------------- タイトル画面 ----------------
+
 def settings_screen(screen: pg.Surface) -> None:
+    
     title_font = get_jp_font(44)
     font = get_jp_font(24)
     small = get_jp_font(18)
@@ -440,6 +445,7 @@ def settings_screen(screen: pg.Surface) -> None:
         pg.display.flip()
         clock.tick(60)
 
+
 def title_screen(screen: pg.Surface, font: pg.font.Font) -> bool:
     button = pg.mixer.Sound(os.path.join("assets","sounds","button.wav"))
 
@@ -452,9 +458,11 @@ def title_screen(screen: pg.Surface, font: pg.font.Font) -> bool:
     # ボタン　（追加可能）
     btn_w, btn_h = 320, 64
     start_btn = pg.Rect(WIN_W//2 - btn_w//2, 300, btn_w, btn_h)
+    settings_btn = pg.Rect(WIN_W//2 - btn_w//2, 360, btn_w, btn_h)
     quit_btn  = pg.Rect(WIN_W//2 - btn_w//2, 380, btn_w, btn_h)
+
     #                   横　　　　　　縦　　　　　　ボタン幅　高さ
-    while True:
+     while True:
         mx, my = pg.mouse.get_pos()#マウスの座標
 
         for e in pg.event.get():
@@ -467,6 +475,9 @@ def title_screen(screen: pg.Surface, font: pg.font.Font) -> bool:
                 if start_btn.collidepoint(e.pos):
                     button.play() #効果音再生
                     return True
+                if settings_btn.collidepoint(e.pos):
+                    button.play()
+                    settings_screen(screen)
                 if quit_btn.collidepoint(e.pos):
                     return False
 
@@ -475,19 +486,26 @@ def title_screen(screen: pg.Surface, font: pg.font.Font) -> bool:
         t = title_font.render("Puzzle & Monsters", True, (240, 240, 240))#タイトル
         screen.blit(t, (WIN_W//2 - t.get_width()//2, 170))
 
-
         # ボタン描画（ホバー機能）
         start_hover = start_btn.collidepoint(mx, my)
+        settings_hover = settings_btn.collidepoint(mx, my)
         quit_hover = quit_btn.collidepoint(mx, my)
 
         pg.draw.rect(screen, (70, 120, 220) if start_hover else (50, 90, 170), start_btn, border_radius=12)
+        pg.draw.rect(screen, (90, 160, 120) if settings_hover else (60, 120, 90), settings_btn, border_radius=12)
         pg.draw.rect(screen, (220, 90, 90) if quit_hover else (170, 60, 60), quit_btn, border_radius=12)
+        
         pg.draw.rect(screen, (230, 230, 230), start_btn, width=2, border_radius=12)
+        pg.draw.rect(screen, (230, 230, 230), settings_btn, width=2, border_radius=12)
         pg.draw.rect(screen, (230, 230, 230), quit_btn, width=2, border_radius=12)
+        
         #ボタン文字
         s1 = sub_font.render("スタート", True, (245, 245, 245))
         screen.blit(s1, (start_btn.centerx - s1.get_width()//2, start_btn.centery - s1.get_height()//2))
 
+        sset = sub_font.render("設定", True, (245, 245, 245))
+        screen.blit(sset, (settings_btn.centerx - sset.get_width()//2, settings_btn.centery - sset.get_height()//2))
+         
         s2 = sub_font.render("終了", True, (245, 245, 245))
         screen.blit(s2, (quit_btn.centerx - s2.get_width()//2, quit_btn.centery - s2.get_height()//2))
 
@@ -791,6 +809,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
