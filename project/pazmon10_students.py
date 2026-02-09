@@ -520,7 +520,7 @@ def main():
     lifeup.set_volume(1.0)
     clear.set_volume(1.0)
     button.set_volume(3.0)
-    gameover.set_volume(1.0) ]
+    gameover.set_volume(1.0) 
 
     if mixer_ok:
         set_music_volume(MUSIC_VOLUME)
@@ -791,6 +791,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
