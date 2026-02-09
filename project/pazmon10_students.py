@@ -451,7 +451,12 @@ def title_screen(screen: pg.Surface, font: pg.font.Font) -> bool:
 # ---------------- メイン ----------------
 def main():
     pg.init()
-    pg.mixer.init() #BGMと効果音追加
+     try:
+        pg.mixer.init()  # BGMと効果音追加
+        mixer_ok = True
+    except Exception:
+        mixer_ok = False
+
     bgm_title = os.path.join("assets","sounds","maou_bgm_8bit01_opening.mp3")
     bgm_battle = os.path.join("assets","sounds","maou_bgm_8bit25_battle.mp3")
     bgm_boss = os.path.join("assets","sounds","maou_bgm_8bit18_boss.mp3")
@@ -733,6 +738,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
