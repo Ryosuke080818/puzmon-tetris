@@ -516,6 +516,7 @@ def title_screen(screen: pg.Surface, font: pg.font.Font) -> bool:
 def main():
     pg.init()
 
+    
     try:
         pg.mixer.init()  # BGMと効果音追加
         mixer_ok = True
@@ -525,6 +526,7 @@ def main():
     bgm_title = os.path.join("assets","sounds","maou_bgm_8bit01_opening.mp3")
     bgm_battle = os.path.join("assets","sounds","maou_bgm_8bit25_battle.mp3")
     bgm_boss = os.path.join("assets","sounds","maou_bgm_8bit18_boss.mp3")
+
     move = pg.mixer.Sound(os.path.join("assets","sounds","move.wav"))
     attack = pg.mixer.Sound(os.path.join("assets","sounds","attack.wav"))
     damage = pg.mixer.Sound(os.path.join("assets","sounds","damage.wav"))
@@ -532,6 +534,7 @@ def main():
     clear = pg.mixer.Sound(os.path.join("assets","sounds","clear.wav"))
     button = pg.mixer.Sound(os.path.join("assets","sounds","button.wav"))
     gameover = pg.mixer.Sound(os.path.join("assets","sounds","gameover.wav"))
+    
     move.set_volume(1.0) #音量
     attack.set_volume(3.0)
     damage.set_volume(1.0)
@@ -652,17 +655,23 @@ def main():
                         message = f"{rn}段 {SLOTS[c]} を掴んだ"
 
             elif e.type==pg.MOUSEMOTION:
-                mx,my = e.pos
-                hi = (mx-LEFT_MARGIN)//(SLOT_W+SLOT_PAD)
-                if 0<=hi<14 and FIELD_Y<=my<=FIELD_Y+SLOT_W:
-                    hover_idx = hi
-                    if drag_src is not None and hover_idx != drag_src:
-                        move.play() #効果音
-                        field[drag_src], field[hover_idx] = field[hover_idx], field[drag_src]
-                        drag_src = hover_idx
+                mx, my = e.pos
+                if FIELD_Y <= my <= FIELD_Y + rows * (SLOT_W + SLOT_PAD):
+                    r = (my - FIELD_Y) // (SLOT_W + SLOT_PAD)
+                    c = (mx - LEFT_MARGIN) // (SLOT_W + SLOT_PAD)
+                    if 0 <= r < rows and 0 <= c < cols:
+                        hover_idx = (r, c)
+                        if drag_src is not None and hover_idx != drag_src:
+                            move.play()  # 効果音
+                            r0, c0 = drag_src
+                            r1, c1 = hover_idx
+                            field[r0][c0], field[r1][c1] = field[r1][c1], field[r0][c0]
+                            drag_src = hover_idx
+                    else:
+                        hover_idx = None
                 else:
                     hover_idx = None
-
+    
             elif e.type==pg.MOUSEBUTTONUP and e.button==1:
                 if drag_src is not None:
                      r0, c0 = drag_src
@@ -711,37 +720,39 @@ def main():
                         # --- 評価ループ（横の3連・連鎖対応） ---
                      combo=0 
                      while True:
-                            run = leftmost_run(field)
-                            if not run:
+                            runs = find_runs(field)
+                            if not runs:
                                 break
-                            start,L = run
-                            combo+=1
-                            r0, c0, L, direction = run[0]
-                            elem = field[r0][c0]
+                            combo += 1
 
-                            if elem=="命":
-                                heal=jitter(20*(1.5**((L-3)+combo)))
-                                party['hp']=min(party['max_hp'], party['hp']+heal)
-                                party['last_damage_time'] = pg.time.get_ticks()  ##
-                                party['hp_event_type'] = 'heal' 
-                                lifeup.play() #効果音
-                                message=f"HP +{heal}"
-                            else:
-                                dmg=party_attack_from_gems(elem,L,combo,party,enemy)
-                                if dmg > 0:                           ##
-                                    enemy['enemy_damage_time'] = pg.time.get_ticks()
-                                    attack.play() #効果音
-                                message=f"{elem}攻撃！ {dmg} ダメージ"
-                            collapse_left(field,start,L)
+                            # run ごとに効果適用（消去は apply_runs でまとめて）
+                            for (rr, cc, L, direction) in runs:
+                                elem = field[rr][cc]
+                                if elem == "命":
+                                    heal = jitter(20 * (1.5 ** ((L - 3) + combo)))
+                                    party['hp'] = min(party['max_hp'], party['hp'] + heal)
+                                    party['last_damage_time'] = pg.time.get_ticks()
+                                    party['hp_event_type'] = 'heal'
+                                    lifeup.play()  # 効果音
+                                    message = f"HP +{heal}"
+                                else:
+                                    dmg = party_attack_from_gems(elem, L, combo, party, enemy)
+                                    if dmg > 0:
+                                        enemy['enemy_damage_time'] = pg.time.get_ticks()
+                                        attack.play()  # 効果音
+                                    message = f"{elem}攻撃！ {dmg} ダメージ"
+
+                            apply_runs(field, runs)
+
                             screen.fill((22,22,28)); draw_top(screen, enemy, party, font, monster_images, show_frame)
                             draw_field(screen, field, font, gem_images=gem_images); draw_message(screen, "消滅！", font)
                             pg.display.flip(); time.sleep(FRAME_DELAY)
-                            fill_random(field)
                             screen.fill((22,22,28)); draw_top(screen, enemy, party, font, monster_images, show_frame)
                             draw_field(screen, field, font, gem_images=gem_images); draw_message(screen, "湧き！", font)
                             pg.display.flip(); time.sleep(FRAME_DELAY)
-                            if enemy['hp']<=0:
-                                message=f"{enemy['name']} を倒した！"
+
+                            if enemy['hp'] <= 0:
+                                message = f"{enemy['name']} を倒した！"
                                 break
 
                         # 敵ターン or 撃破後処理
@@ -809,6 +820,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
