@@ -534,7 +534,7 @@ def main():
                      c1 = (mx - LEFT_MARGIN) // (SLOT_W + SLOT_PAD)
 
                    # 有効範囲＆同一セル以外
-                    if 0 <= r1 < rows and 0 <= c1 < cols and (r1 != r0 or c1 != c0):
+                     if 0 <= r1 < rows and 0 <= c1 < cols and (r1 != r0 or c1 != c0):
                         # --- 横方向スライド（同じ行） ---
                         if r1 == r0 and c1 != c0:
                             step = 1 if c1 > c0 else -1
@@ -575,11 +575,11 @@ def main():
                      combo=0 
                      while True:
                             run = leftmost_run(field)
-                            if not runs:
+                            if not run:
                                 break
                             start,L = run
                             combo+=1
-                            r0, c0, L, direction = runs[0]
+                            r0, c0, L, direction = run[0]
                             elem = field[r0][c0]
 
                             if elem=="命":
@@ -671,6 +671,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
