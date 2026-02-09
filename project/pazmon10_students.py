@@ -332,6 +332,68 @@ def draw_message(screen, text, font):
         screen.blit(surf,(525,275+i*40))
 
 # ---------------- タイトル画面 ----------------
+def settings_screen(screen: pg.Surface) -> None:
+    """BGM音量の調整画面（ESC または 戻る でタイトルへ）。"""
+    title_font = get_jp_font(44)
+    font = get_jp_font(24)
+    small = get_jp_font(18)
+    clock = pg.time.Clock()
+
+    back_btn = pg.Rect(30, 30, 140, 44)
+
+    # スライダー
+    bar = pg.Rect(WIN_W // 2 - 220, 320, 440, 10)
+    knob_r = 14
+    dragging = False
+
+    while True:
+        mx, my = pg.mouse.get_pos()
+        for e in pg.event.get():
+            if e.type == pg.QUIT:
+                return
+            if e.type == pg.KEYDOWN and e.key == pg.K_ESCAPE:
+                return
+            if e.type == pg.MOUSEBUTTONDOWN and e.button == 1:
+                if back_btn.collidepoint(e.pos):
+                    return
+                # つまみ判定 or バークリック
+                knob_x = int(bar.x + MUSIC_VOLUME * bar.w)
+                knob_y = bar.y + bar.h // 2
+                if (mx - knob_x) ** 2 + (my - knob_y) ** 2 <= knob_r ** 2 or bar.collidepoint(e.pos):
+                    dragging = True
+            if e.type == pg.MOUSEBUTTONUP and e.button == 1:
+                dragging = False
+
+        if dragging:
+            t = (mx - bar.x) / bar.w
+            set_music_volume(t)
+
+        # 描画
+        screen.fill((12, 12, 18))
+        screen.blit(title_font.render("設定", True, (240, 240, 240)), (WIN_W // 2 - 40, 120))
+
+        # 戻るボタン
+        back_hover = back_btn.collidepoint(mx, my)
+        pg.draw.rect(screen, (80, 80, 110) if back_hover else (55, 55, 75), back_btn, border_radius=10)
+        pg.draw.rect(screen, (230, 230, 230), back_btn, width=2, border_radius=10)
+        bt = small.render("戻る", True, (245, 245, 245))
+        screen.blit(bt, (back_btn.centerx - bt.get_width() // 2, back_btn.centery - bt.get_height() // 2))
+
+        # 音量スライダー
+        screen.blit(font.render("BGM 音量", True, (235, 235, 235)), (bar.x, bar.y - 48))
+        pg.draw.rect(screen, (60, 60, 70), bar, border_radius=6)
+        fill = pg.Rect(bar.x, bar.y, int(bar.w * MUSIC_VOLUME), bar.h)
+        pg.draw.rect(screen, (70, 120, 220), fill, border_radius=6)
+        knob_x = int(bar.x + MUSIC_VOLUME * bar.w)
+        knob_y = bar.y + bar.h // 2
+        pg.draw.circle(screen, (245, 245, 245), (knob_x, knob_y), knob_r)
+        pg.draw.circle(screen, (30, 30, 35), (knob_x, knob_y), knob_r, width=2)
+
+        screen.blit(small.render(f"{int(MUSIC_VOLUME*100)}%", True, (230, 230, 230)), (bar.right + 12, bar.y - 10))
+        screen.blit(small.render("(ドラッグで調整 / ESCで戻る)", True, (200, 200, 200)), (bar.x, bar.bottom + 20))
+
+        pg.display.flip()
+        clock.tick(60)
 
 def title_screen(screen: pg.Surface, font: pg.font.Font) -> bool:
     button = pg.mixer.Sound(os.path.join("assets","sounds","button.wav"))
@@ -672,6 +734,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
