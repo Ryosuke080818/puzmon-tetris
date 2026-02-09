@@ -122,8 +122,8 @@ def init_field(rows=3, cols=14)->List[List[str]]:
 
 def leftmost_run(field:List[List[str]])->Optional[Tuple[int,int]]:
        rows = len(field)
-    cols = len(field[0])
-    for r in range(rows):
+       cols = len(field[0])
+       for r in range(rows):
         row = field[r]
         i = 0
         while i < cols:
@@ -134,7 +134,7 @@ def leftmost_run(field:List[List[str]])->Optional[Tuple[int,int]]:
             if L >= 3 and row[i] in GEMS:
                 return (r, i, L)
             i = j
-    return None
+       return None
 
 def collapse_left(row:List[str], start:int, length:int):
     # 消滅部分を '無' にしてから左詰め（簡略：一気に詰める）
@@ -261,7 +261,7 @@ def draw_field(screen, field:List[List[str]], font, hover_idx:Optional[int]=None
     # 宝石（ドラッグ開始スロットは空に見せる）
     for r in range(rows):
         for c in range(cols):
-        if drag_src is not None and (r,c)==drag_src:
+         if drag_src is not None and (r,c)==drag_src:
             continue
         rect=slot_rect(r,c)
         cx,cy=rect.center
@@ -529,9 +529,9 @@ def main():
             elif e.type==pg.MOUSEBUTTONUP and e.button==1:
                 if drag_src is not None:
                      r0, c0 = drag_src
-                    mx, my = e.pos
-                    r1 = (my - FIELD_Y) // (SLOT_W + SLOT_PAD)
-                    c1 = (mx - LEFT_MARGIN) // (SLOT_W + SLOT_PAD)
+                     mx, my = e.pos
+                     r1 = (my - FIELD_Y) // (SLOT_W + SLOT_PAD)
+                     c1 = (mx - LEFT_MARGIN) // (SLOT_W + SLOT_PAD)
 
                    # 有効範囲＆同一セル以外
                     if 0 <= r1 < rows and 0 <= c1 < cols and (r1 != r0 or c1 != c0):
@@ -572,14 +572,14 @@ def main():
                         # 斜め移動（rもcも違う）は無効
 
                         # --- 評価ループ（横の3連・連鎖対応） ---
-                    combo=0 
-                    while True:
+                     combo=0 
+                     while True:
                             run = leftmost_run(field)
                             if not runs:
                                 break
                             start,L = run
                             combo+=1
-                           r0, c0, L, direction = runs[0]
+                            r0, c0, L, direction = runs[0]
                             elem = field[r0][c0]
 
                             if elem=="命":
@@ -608,7 +608,7 @@ def main():
                                 break
 
                         # 敵ターン or 撃破後処理
-                    if enemy['hp']>0:
+                     if enemy['hp']>0:
                             edmg=enemy_attack(party, enemy)
                             party['last_damage_time'] = pg.time.get_ticks() ##
                             party['hp_event_type'] = 'damage'
@@ -621,7 +621,7 @@ def main():
                                 pg.mixer.music.fadeout(500) #BGM停止・効果音
                                 gameover.play()
                                 message="パーティは力尽きた…（ESCで終了）"
-                    else:
+                     else:
                             enemy_idx+=1
                             if enemy_idx<len(enemies):
                                 enemy=enemies[enemy_idx]
@@ -671,6 +671,7 @@ def main():
 
 if __name__=="__main__":
     main()
+
 
 
 
