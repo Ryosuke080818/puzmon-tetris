@@ -9,9 +9,29 @@ class _NullSound:
 
     def set_volume(self, *args, **kwargs):
         return None
+    
+class AnimeEffect:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.frame = 0
+        self.finished = False
+        self.last_update = pg.time.get_ticks()
+    def update(self):
+        now = pg.time.get_ticks()
+        if now - self.last_update > 20:  # アニメーション速度
+            if self.frame < len(EFFECT_IMAGES) - 1:
+                self.frame += 1
+                self.last_update = now
+            else:
+                self.finished = True
 
+    def draw(self, screen):
+        img = EFFECT_IMAGES[self.frame]
+        screen.blit(img, (self.x - img.get_width()//2, self.y - img.get_height()//2))
 
 def load_sound(path: str):
+    """存在しない効果音で落ちないようにする。"""
     if os.path.exists(path):
         return pg.mixer.Sound(path)
     return _NullSound()
@@ -46,8 +66,8 @@ def get_jp_font(size: int) -> pg.font.Font:
 # ---------------- 可変パラメータ ----------------
 FRAME_DELAY = 0.5
 ENEMY_DELAY = 1.0
-WIN_W, WIN_H = 1010, 720
-FIELD_Y = 520
+WIN_W, WIN_H = 1010, 730 
+FIELD_Y = WIN_H-230
 SLOT_W = 65
 SLOT_PAD = 3
 LEFT_MARGIN = 30
@@ -56,6 +76,9 @@ GEM_IMG_SIZE = (SLOT_W - 4, SLOT_W - 4) #宝石の画像サイズ
 # ドラッグ演出のための変数
 DRAG_SCALE = 1.18
 DRAG_SHADOW = (0, 0, 0, 90)
+
+EFFECT_IMAGES = []
+active_effects = []
 
 #敵画像アニメーションのための変数
 anim_timer = 0
@@ -161,7 +184,6 @@ def leftmost_run(field:List[List[str]])->Optional[Tuple[int,int]]:
        return None
 
 def collapse_left(row:List[str], start:int, length:int):
-    # 消滅部分を '無' にしてから左詰め（簡略：一気に詰める）
     for k in range(start, start+length):
         row[k]="無"
     rest=[e for e in row if e!="無"]
@@ -172,14 +194,12 @@ def fill_random(row:List[str]):
         if e=="無": 
             row[i]=random.choice(GEMS)
 def find_runs(field: List[List[str]]):
-    """縦横どちらの3連も探し、全ての run を返す。
-    戻り値: list of (r, c, length, 'h' or 'v')
-    """
+    global active_effects
+    
     rows = len(field)
     cols = len(field[0])
     runs = []
 
-    # --- 横の run ---
     for r in range(rows):
         c = 0
         while c < cols:
@@ -190,9 +210,7 @@ def find_runs(field: List[List[str]]):
             if length >= 3 and field[r][c] in GEMS:
                 runs.append((r, c, length, 'h'))
             c = j
-    
-    
-    # --- 縦の run ---        
+
     for c in range(cols):
         r = 0
         while r < rows:
@@ -203,6 +221,17 @@ def find_runs(field: List[List[str]]):
             if length >= 3 and field[r][c] in GEMS:
                 runs.append((r, c, length, 'v'))
             r = j
+
+    if runs:
+        for (r, c, L, direction) in runs:
+            for i in range(L):
+                curr_r = r + (i if direction == 'v' else 0)
+                curr_c = c + (i if direction == 'h' else 0)
+                
+                rect = slot_rect(curr_r, curr_c)
+                
+                active_effects.append(AnimeEffect(rect.centerx, rect.centery))
+
     return runs
 
 def apply_runs(field: List[List[str]], runs):
@@ -218,7 +247,7 @@ def apply_runs(field: List[List[str]], runs):
 
     # 全行を左詰めして補充
     for r in range(len(field)):
-        collapse_left(field[r], 0, 0)  # start/length は無視、行全体左詰め
+        collapse_left(field[r], 0, 0)
         fill_random(field[r])
     return runs            
 
@@ -278,19 +307,6 @@ def draw_field(
 ):
     rows = len(field)
     cols = len(field[0]) if rows > 0 else 0 
-    
-    # スロット見出し
-    for c, slot in enumerate(SLOTS[:cols]):
-        rect = slot_rect(0, c)
-        s = font.render(slot, True, (220, 220, 220))
-        screen.blit(
-            s,
-            (
-                rect.x + rect.width // 2 - s.get_width() // 2,
-                rect.y - s.get_height() - 4,
-            ),
-        )
-    
     # スロット下地 & ホバー強調
     for r in range(rows):
         for c in range(cols):
@@ -323,32 +339,36 @@ def draw_field(
 
 def draw_top(screen, enemy, party, font, enemy_frames, show_frame=0):
     current_time = pg.time.get_ticks()
+    
     # 敵画像/名前
     actual_frame = show_frame % len(enemy_frames)
     img = enemy_frames[actual_frame]
-    screen.blit(img, (40, 40))
+    if enemy["name"] == "ゴブリン":
+        screen.blit(img, (130, 70))
+    else:
+        screen.blit(img, (50, 70))
 
     if enemy["max_hp"] > 0:
         # 敵名とHPバー
-        if current_time - enemy.get('enemy_damage_time', 0) < 400: #########################
+        if current_time - enemy.get('enemy_damage_time', 0) < 400:
             e_name_color = (255, 50, 50) 
         else:
             e_name_color = (240, 240, 240)
         name = font.render(enemy["name"], True, e_name_color)
-        screen.blit(name, (525, 48))
+        screen.blit(name, (525, WIN_H-682))
         enemy_bar = hp_bar_surf(enemy['hp'], enemy['max_hp'], 420, 18)
-        screen.blit(enemy_bar, (525, 90))
+        screen.blit(enemy_bar, (525, WIN_H-640))
     
         # 敵HP数値（バー右側に）
-        if current_time - enemy.get('enemy_damage_time', 0) < 400: #########################
+        if current_time - enemy.get('enemy_damage_time', 0) < 400: 
             hp_color = (255, 50, 50) 
         else:
             hp_color = (240, 240, 240)
-        enemy_hp_text = font.render(f"{enemy['hp']}/{enemy['max_hp']}", True, hp_color)
-        screen.blit(enemy_hp_text, (838, 48))
+        enemy_hp_text = font.render(f"{int(max(0, enemy['hp']))}/{enemy['max_hp']}", True, hp_color)
+        screen.blit(enemy_hp_text, (838, WIN_H-682))
 
         # 「パーティ」ラベル
-        if current_time - party.get('last_damage_time', 0) < 400:#########################
+        if current_time - party.get('last_damage_time', 0) < 400:
             if party.get('hp_event_type') == 'heal':
                 p_name_color = (50, 255, 50)
             else:
@@ -356,28 +376,28 @@ def draw_top(screen, enemy, party, font, enemy_frames, show_frame=0):
         else:
             p_name_color = (240, 240, 240)
         label = font.render("パーティ", True, p_name_color)
-        screen.blit(label, (525, 148))
+        screen.blit(label, (525, WIN_H-582))
 
         # パーティHPバー
         party_bar = hp_bar_surf(party['hp'], party['max_hp'], 420, 18)
-        screen.blit(party_bar, (525, 190))
+        screen.blit(party_bar, (525, WIN_H-540))
 
         # パーティHP数値
-        if current_time - party.get('last_damage_time', 0) < 400:#########################
+        if current_time - party.get('last_damage_time', 0) < 400:
             if party.get('hp_event_type') == 'heal':
                 hp_color = (50, 255, 50)
             else:
                 hp_color = (255, 50, 50) 
         else:
             hp_color = (240, 240, 240)
-        party_hp_text = font.render(f"{int(party['hp'])}/{party['max_hp']}", True, hp_color)
-        screen.blit(party_hp_text, (838, 148))
+        party_hp_text = font.render(f"{int(max(0, party['hp']))}/{party['max_hp']}", True, hp_color)
+        screen.blit(party_hp_text, (838, WIN_H-582))
 
 def draw_message(screen, text, font):
     lines = text.split('\n')
     for i, line in enumerate(lines):
         surf = font.render(line, True, (230,230,230))
-        screen.blit(surf,(525,275+i*40))
+        screen.blit(surf,(525,WIN_H-455+i*40))
 
 # ---------------- タイトル画面 ----------------
 
@@ -385,11 +405,11 @@ def settings_screen(screen: pg.Surface) -> None:
     
     title_font = get_jp_font(44)
     font = get_jp_font(24)
-    small = get_jp_font(18)
+    small = get_jp_font(22)
     clock = pg.time.Clock()
 
     back_btn = pg.Rect(30, 30, 140, 44)
-
+    button = load_sound(os.path.join("assets", "sounds", "button.wav"))
     # スライダー
     bar = pg.Rect(WIN_W // 2 - 220, 320, 440, 10)
     knob_r = 14
@@ -404,6 +424,7 @@ def settings_screen(screen: pg.Surface) -> None:
                 return
             if e.type == pg.MOUSEBUTTONDOWN and e.button == 1:
                 if back_btn.collidepoint(e.pos):
+                    button.play() 
                     return
                 # つまみ判定 or バークリック
                 knob_x = int(bar.x + MUSIC_VOLUME * bar.w)
@@ -439,7 +460,7 @@ def settings_screen(screen: pg.Surface) -> None:
         pg.draw.circle(screen, (30, 30, 35), (knob_x, knob_y), knob_r, width=2)
 
         screen.blit(small.render(f"{int(MUSIC_VOLUME*100)}%", True, (230, 230, 230)), (bar.right + 12, bar.y - 10))
-        screen.blit(small.render("(ドラッグで調整 / ESCで戻る)", True, (200, 200, 200)), (bar.x, bar.bottom + 20))
+        screen.blit(small.render("（ドラッグで調整 / ESCで戻る）", True, (200, 200, 200)), (bar.x, bar.bottom + 20)) ###################
 
         pg.display.flip()
         clock.tick(60)
@@ -449,8 +470,8 @@ def title_screen(screen: pg.Surface, font: pg.font.Font) -> bool:
     button = load_sound(os.path.join("assets", "sounds", "button.wav"))
 
     # ボタンはクリックのみ　True: ゲーム開始 / False: 終了
-    title_font = get_jp_font(56)
-    sub_font = get_jp_font(24)
+    title_font = get_jp_font(70)
+    sub_font = get_jp_font(28)
     clock = pg.time.Clock()
 
     # ボタン
@@ -547,6 +568,14 @@ def main():
     gem_images = {elem: load_gem_image(elem) for elem in GEMS + ["無"]}
     pg.display.set_caption("Puzzle & Monsters - GUI Prototype")
     font = get_jp_font(26)
+    
+    # アニメーション画像
+    global EFFECT_IMAGES
+    for i in range(7):
+        img = pg.image.load(f"sprite_{i}.png").convert_alpha()
+        # リサイズ
+        img = pg.transform.scale(img, (SLOT_W*1.6, SLOT_W*1.6))
+        EFFECT_IMAGES.append(img)
 
     if os.path.exists(bgm_title): #タイトル画面のBGM再生
         pg.mixer.music.fadeout(500)
@@ -556,7 +585,7 @@ def main():
     if not title_screen(screen, font):
         pg.quit()
         sys.exit()
-    back_btn = pg.Rect(WIN_W - 160, 10, 150, 38) #タイトルへ戻るボタン
+    back_btn = pg.Rect(WIN_W - 1000, 10, 150, 38) #タイトルへ戻るボタン
 
     if os.path.exists(bgm_battle): #バトルBGM再生
         pg.mixer.music.fadeout(500)
@@ -567,10 +596,13 @@ def main():
     anim_timer = pg.time.get_ticks()
     show_frame = 0
     
+    global active_effects
+    active_effects = []
+    
     party = {
         "player_name":"Player",
         "allies":[
-            {"name":"青龍","element":"風","hp":150,"max_hp":150,"ap":15,"dp":10,"last_damage_time":0,"hp_event_type":"none"}, #要素2つ追加
+            {"name":"青龍","element":"風","hp":150,"max_hp":150,"ap":15,"dp":10,"last_damage_time":0,"hp_event_type":"none"}, 
             {"name":"朱雀","element":"火","hp":150,"max_hp":150,"ap":25,"dp":10,"last_damage_time":0,"hp_event_type":"none"},
             {"name":"白虎","element":"土","hp":150,"max_hp":150,"ap":20,"dp":5,"last_damage_time":0,"hp_event_type":"none"},
             {"name":"玄武","element":"水","hp":150,"max_hp":150,"ap":20,"dp":15,"last_damage_time":0,"hp_event_type":"none"},
@@ -578,19 +610,18 @@ def main():
         "hp":600, "max_hp":600, "dp":(10+10+5+15)/4
     }
     enemies = [
-        {"name":"スライム","element":"水","hp":50,"max_hp":50,"ap":10,"dp":1,"enemy_damage_time":0}, #要素追加・敵のhpを開発用に調整
-        {"name":"ゴブリン","element":"土","hp":50,"max_hp":50,"ap":20,"dp":5,"enemy_damage_time":0},
-        {"name":"オオコウモリ","element":"風","hp":50,"max_hp":50,"ap":30,"dp":10,"enemy_damage_time":0},
-        {"name":"ウェアウルフ","element":"風","hp":50,"max_hp":50,"ap":40,"dp":15,"enemy_damage_time":0},
-        {"name":"ドラゴン","element":"火","hp":50,"max_hp":50,"ap":50,"dp":20,"enemy_damage_time":0},
+        {"name":"スライム","element":"水","hp":100,"max_hp":100,"ap":10,"dp":1,"enemy_damage_time":0}, 
+        {"name":"ゴブリン","element":"土","hp":200,"max_hp":200,"ap":20,"dp":5,"enemy_damage_time":0},
+        {"name":"オオコウモリ","element":"風","hp":300,"max_hp":300,"ap":30,"dp":10,"enemy_damage_time":0},
+        {"name":"ウェアウルフ","element":"風","hp":300,"max_hp":300,"ap":40,"dp":15,"enemy_damage_time":0},
+        {"name":"ドラゴン","element":"火","hp":500,"max_hp":500,"ap":50,"dp":20,"enemy_damage_time":0},
     ]
     enemy_idx=0
     enemy = enemies[enemy_idx]
     field = init_field()
 
     rows = len(field)
-    cols = len(field[0]) if rows > 0 else 0
-    row_names = ["上", "中", "下"]
+    cols = len(field[0]) if rows > 0 else 0 
 
     monster_images = load_monster_images(enemy["name"])
 
@@ -601,21 +632,121 @@ def main():
 
     clock = pg.time.Clock()
     running=True
+    combo=0
+    waiting_for_effects = False
+    wait_timer = 0 
+    state = "PLAYER_TURN"
+
     while running:
-        current_time = pg.time.get_ticks() #アニメーション処理
-        if current_time - anim_timer > 500:  # 1フレーム0.5秒
+        current_time = pg.time.get_ticks()
+        if current_time - anim_timer > 400:
             show_frame = (show_frame + 1) % len(monster_images)
             anim_timer = current_time
+
+        # エフェクトの更新
+        for eff in active_effects[:]:
+            eff.update()
+            if eff.finished:
+                active_effects.remove(eff)
+        if waiting_for_effects and not active_effects:
+            if wait_timer == 0:
+                combo += 1 # コンボ加算
+                current_messages = []
+                
+                for (r, c, L, direction) in current_runs:
+                    elem = field[r][c]
+                    if elem == "命":
+                        heal = jitter(20 * (1.5 ** ((L - 3) + combo)))
+                        party['hp'] = min(party['max_hp'], party['hp'] + int(heal))
+                        party['last_damage_time'] = current_time
+                        party['hp_event_type'] = 'heal'
+                        lifeup.play()
+                        current_messages.append(f"HP +{int(heal)}")
+                    else:
+                        dmg = party_attack_from_gems(elem, L, combo, party, enemy)
+                        if dmg > 0:
+                            enemy['hp'] -= int(dmg)
+                            attack.play()
+                            current_messages.append(f"{elem}攻撃！ {int(dmg)}ダメージ")
+                    
+                    field[r][c] = "無"
+                    
+                    if current_messages:
+                        message = "\n".join(current_messages)
+                    
+                    wait_timer = current_time + 300
+            
+            elif current_time > wait_timer:
+                wait_timer = 0
+                
+                apply_runs(field, current_runs)
+
+                next_runs = find_runs(field)
+                if next_runs:
+                    current_runs = next_runs
+                    waiting_for_effects = True
+                else:
+                    waiting_for_effects = False
+                    wait_timer = current_time + 800
+                    
+        if not waiting_for_effects and wait_timer > 0:
+            if current_time > wait_timer:
+                wait_timer = 0        
+                
+                if enemy['hp'] > 0:
+                    # 敵ターン
+                    edmg = enemy_attack(party, enemy)
+                    party['hp'] -= int(edmg)
+                    party['last_damage_time'] = current_time
+                    party['hp_event_type'] = 'damage'
+                    damage.play()
+                    message = f"{enemy['name']}の攻撃！ -{int(edmg)}"
+                    if party['hp']<=0:
+                                pg.mixer.music.fadeout(500) #BGM停止・効果音
+                                gameover.play()
+                                message="パーティは力尽きた…（ESCで終了）"
+                else:
+                    enemy['hp'] = 0 
+                    
+                    enemy_idx += 1
+                    if enemy_idx < len(enemies):
+                        enemy = enemies[enemy_idx]
+                        monster_images = load_monster_images(enemy["name"])
+                        field = init_field() # 盤面リセット
+                        message = f"{enemies[enemy_idx-1]['name']}を倒した！\n次は {enemy['name']}！"
+                    else:
+                        # 全クリ処理
+                        pg.mixer.music.fadeout(500)
+                        clear.play()
+                        enemy = {"name":"宝箱","element":"無","hp":0,"max_hp":0}
+                        monster_images = load_monster_images("宝箱")
+                        message = "ダンジョン制覇！おめでとう！"
         
         for e in pg.event.get():
+            if e.type == pg.QUIT: running = False
+            if waiting_for_effects or wait_timer > 0 or party['hp'] <= 0:
+                continue
+            if e.type == pg.MOUSEBUTTONUP and e.button == 1:
+                if drag_src:
+                    runs = find_runs(field)
+                    if runs:
+                        current_runs = runs
+                        combo = 0
+                        waiting_for_effects = True # エフェクト待機モード
+                    drag_src = None
+                    
             if e.type==pg.QUIT:
                 running=False
 
             elif e.type==pg.MOUSEBUTTONDOWN and e.button==1:
-                # タイトルへ戻る
+              if party['hp'] <= 0 or enemy['name'] == "宝箱" or waiting_for_effects or wait_timer > 0:
+                    continue
+              # タイトルへ戻る
+              if enemy["name"] != "宝箱":
                 if back_btn.collidepoint(e.pos):
                     if os.path.exists(bgm_title): #タイトル画面BGM再生
                         pg.mixer.music.fadeout(500)
+                        button.play() 
                         pg.mixer.music.load(bgm_title)
                         pg.mixer.music.play(-1)
                     
@@ -641,15 +772,12 @@ def main():
                     continue
                     
                 mx,my = e.pos
-                # 盤面の当たり判定（3行ぶん）
                 if FIELD_Y <= my <= FIELD_Y + rows * (SLOT_W + SLOT_PAD):
                     r = (my - FIELD_Y) // (SLOT_W + SLOT_PAD)
                     c = (mx - LEFT_MARGIN) // (SLOT_W + SLOT_PAD)
                     if 0 <= r < rows and 0 <= c < cols:
                         drag_src = (r, c)
-                        drag_elem = field[r][c]
-                        rn = row_names[r] if 0 <= r < len(row_names) else f"{r}段"
-                        message = f"{rn}段 {SLOTS[c]} を掴んだ"
+                        drag_elem = field[r][c] 
 
             elif e.type==pg.MOUSEMOTION:
                 mx, my = e.pos
@@ -669,122 +797,17 @@ def main():
                 else:
                     hover_idx = None
     
-            elif e.type==pg.MOUSEBUTTONUP and e.button==1:
+            elif e.type == pg.MOUSEBUTTONUP and e.button == 1:
                 if drag_src is not None:
-                     r0, c0 = drag_src
-                     mx, my = e.pos
-                     r1 = (my - FIELD_Y) // (SLOT_W + SLOT_PAD)
-                     c1 = (mx - LEFT_MARGIN) // (SLOT_W + SLOT_PAD)
-
-                   # 有効範囲＆同一セル以外
-                     if 0 <= r1 < rows and 0 <= c1 < cols and (r1 != r0 or c1 != c0):
-                        # --- 横方向スライド（同じ行） ---
-                        if r1 == r0 and c1 != c0:
-                            step = 1 if c1 > c0 else -1
-                            k = c0
-                            while k != c1:
-                                nxt = k + step
-                                field[r0][k], field[r0][nxt] = field[r0][nxt], field[r0][k]
-                                k = nxt
-                                message = f"{SLOTS[k - step]} ↔ {SLOTS[k]} を交換"
-                                screen.fill((22, 22, 28))
-                                draw_top(screen, enemy, party, font)
-                                draw_field(screen, field, font, drag_src=None, drag_elem=None)
-                                draw_message(screen, message, font)
-                                pg.display.flip()
-                                time.sleep(FRAME_DELAY)
-
-                        # --- 縦方向スライド（同じ列） ---
-                        elif c1 == c0 and r1 != r0:
-                            step = 1 if r1 > r0 else -1
-                            k = r0
-                            while k != r1:
-                                nxt = k + step
-                                field[k][c0], field[nxt][c0] = field[nxt][c0], field[k][c0]
-                                k = nxt
-                                a = row_names[k - step] if 0 <= (k - step) < len(row_names) else f"{k - step}段"
-                                b = row_names[k]       if 0 <= k < len(row_names)       else f"{k}段"
-                                message = f"{a}段 ↔ {b}段 を交換（列 {SLOTS[c0]}）"
-                                screen.fill((22, 22, 28))
-                                draw_top(screen, enemy, party, font)
-                                draw_field(screen, field, font, drag_src=None, drag_elem=None)
-                                draw_message(screen, message, font)
-                                pg.display.flip()
-                                time.sleep(FRAME_DELAY)
-
-                        # 斜め移動（rもcも違う）は無効
-
-                        # --- 評価ループ（横の3連・連鎖対応） ---
-                     combo=0 
-                     while True:
-                            runs = find_runs(field)
-                            if not runs:
-                                break
-                            combo += 1
-
-                            # run ごとに効果適用（消去は apply_runs でまとめて）
-                            for (rr, cc, L, direction) in runs:
-                                elem = field[rr][cc]
-                                if elem == "命":
-                                    heal = jitter(20 * (1.5 ** ((L - 3) + combo)))
-                                    party['hp'] = min(party['max_hp'], party['hp'] + heal)
-                                    party['last_damage_time'] = pg.time.get_ticks()
-                                    party['hp_event_type'] = 'heal'
-                                    lifeup.play()  # 効果音
-                                    message = f"HP +{heal}"
-                                else:
-                                    dmg = party_attack_from_gems(elem, L, combo, party, enemy)
-                                    if dmg > 0:
-                                        enemy['enemy_damage_time'] = pg.time.get_ticks()
-                                        attack.play()  # 効果音
-                                    message = f"{elem}攻撃！ {dmg} ダメージ"
-
-                            apply_runs(field, runs)
-
-                            screen.fill((22,22,28)); draw_top(screen, enemy, party, font, monster_images, show_frame)
-                            draw_field(screen, field, font, gem_images=gem_images); draw_message(screen, "消滅！", font)
-                            pg.display.flip(); time.sleep(FRAME_DELAY)
-                            screen.fill((22,22,28)); draw_top(screen, enemy, party, font, monster_images, show_frame)
-                            draw_field(screen, field, font, gem_images=gem_images); draw_message(screen, "湧き！", font)
-                            pg.display.flip(); time.sleep(FRAME_DELAY)
-
-                            if enemy['hp'] <= 0:
-                                message = f"{enemy['name']} を倒した！"
-                                break
-
-                        # 敵ターン or 撃破後処理
-                     if enemy['hp']>0:
-                            edmg=enemy_attack(party, enemy)
-                            party['last_damage_time'] = pg.time.get_ticks() ##
-                            party['hp_event_type'] = 'damage'
-                            damage.play() #効果音
-                            message=f"{enemy['name']}の攻撃！ -{edmg}"
-                            screen.fill((22,22,28)); draw_top(screen, enemy, party, font, monster_images, show_frame)
-                            draw_field(screen, field, font, gem_images=gem_images); draw_message(screen, message, font)
-                            pg.display.flip(); time.sleep(FRAME_DELAY)
-                            if party['hp']<=0:
-                                pg.mixer.music.fadeout(500) #BGM停止・効果音
-                                gameover.play()
-                                message="パーティは力尽きた…（ESCで終了）"
-                     else:
-                            enemy_idx+=1
-                            if enemy_idx<len(enemies):
-                                enemy=enemies[enemy_idx]
-                                monster_images = load_monster_images(enemy["name"]) #敵画像をロード
-                                field=init_field()
-                                message=f"さらに奥へ… 次は {enemy['name']}"
-                                if enemy["name"] == "ドラゴン":  #ボス戦ならBGM変更
-                                    if os.path.exists(bgm_boss):
-                                        pg.mixer.music.fadeout(500)
-                                        pg.mixer.music.load(bgm_boss)
-                                        pg.mixer.music.play(-1)
-                            else:
-                                pg.mixer.music.fadeout(500) #BGM停止・効果音
-                                clear.play()
-                                enemy={"name":"宝箱","element":"無","hp":0,"max_hp":0,"ap":0,"dp":0} #クリア後の宝箱演出
-                                monster_images = load_monster_images("宝箱")
-                                show_frame = 0
-                                message="ダンジョン制覇！おめでとう！\n（ESCで終了）"
+                    runs = find_runs(field)
+                    if runs:
+                        current_runs = runs
+                        combo = 0
+                        waiting_for_effects = True
+                    
+                    drag_src = None
+                    drag_elem = None
+                    hover_idx = None
 
                 # ドラッグ終了
                 drag_src = None
@@ -795,16 +818,18 @@ def main():
         screen.fill((22,22,28))
         draw_top(screen, enemy, party, font, monster_images, show_frame)
         draw_field(screen, field, font, hover_idx, drag_src, drag_elem, gem_images=gem_images)
+        draw_message(screen, message, font)
+        for eff in active_effects:
+            eff.draw(screen)
 
         # 「タイトルへ」ボタン
-        mx, my = pg.mouse.get_pos()
-        back_hover = back_btn.collidepoint(mx, my)
-        pg.draw.rect(screen, (80, 80, 110) if back_hover else (55, 55, 75), back_btn, border_radius=10)
-        pg.draw.rect(screen, (230, 230, 230), back_btn, width=2, border_radius=10)
-        btxt = get_jp_font(18).render("タイトルへ", True, (245, 245, 245))
-        screen.blit(btxt, (back_btn.centerx - btxt.get_width()//2, back_btn.centery - btxt.get_height()//2))
-
-        draw_message(screen, message, font)
+        if enemy["name"] != "宝箱":
+            mx, my = pg.mouse.get_pos()
+            back_hover = back_btn.collidepoint(mx, my)
+            pg.draw.rect(screen, (80, 80, 110) if back_hover else (55, 55, 75), back_btn, border_radius=10)
+            pg.draw.rect(screen, (230, 230, 230), back_btn, width=2, border_radius=10)
+            btxt = get_jp_font(18).render("タイトルへ", True, (245, 245, 245))
+            screen.blit(btxt, (back_btn.centerx - btxt.get_width()//2, back_btn.centery - btxt.get_height()//2))
         pg.display.flip()
         clock.tick(60)
 
@@ -817,38 +842,3 @@ def main():
 
 if __name__=="__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
